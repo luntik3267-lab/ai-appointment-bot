@@ -1,6 +1,7 @@
 import os
 import csv
 from dotenv import load_dotenv
+from datetime import datetime, timedelta
 
 from telegram import (
     Update,
@@ -36,9 +37,6 @@ load_dotenv()
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 OWNER_ID = 6064588259
-
-def is_admin(update):
-    return update.effective_user.id == OWNER_ID
 
 init_db()
 
@@ -82,6 +80,28 @@ time_keyboard = ReplyKeyboardMarkup(
 )
 
 
+def is_admin(update):
+    return update.effective_user.id == OWNER_ID
+
+
+def today_date():
+    return datetime.now().strftime("%d.%m.%Y")
+
+
+def tomorrow_date():
+    return (datetime.now() + timedelta(days=1)).strftime("%d.%m.%Y")
+
+
+def normalize_date(text):
+    if text == "📅 Сегодня":
+        return today_date()
+
+    if text == "📅 Завтра":
+        return tomorrow_date()
+
+    return text.strip()
+
+
 def clean_time(text):
     return (
         text.replace("🕙 ", "")
@@ -110,51 +130,64 @@ def get_free_slots_text(appointment_date):
 
 
 async def today_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
     if not is_admin(update):
-
         await update.message.reply_text("⛔ У вас нет доступа к этой команде.")
-
         return
 
     appointments = get_appointments()
+    today = today_date()
 
     text = "📅 Записи на сегодня:\n\n"
-
     found = False
 
     for appointment in appointments:
-
-        if appointment["date"] == "Сегодня":
-
+        if appointment["date"] == today:
             found = True
-
             text += (
-
                 f"ID: {appointment['id']}\n"
-
                 f"👤 {appointment['name']}\n"
-
                 f"✂️ {appointment['service']}\n"
-
                 f"🕒 {appointment['time']}\n"
-
                 f"📞 {appointment['phone']}\n\n"
-
             )
 
     if not found:
-
         text = "На сегодня записей нет."
 
     await update.message.reply_text(text, reply_markup=main_keyboard)
 
-async def export_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
+async def tomorrow_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update):
-        await update.message.reply_text(
-            "⛔ У вас нет доступа к этой команде."
-        )
+        await update.message.reply_text("⛔ У вас нет доступа к этой команде.")
+        return
+
+    appointments = get_appointments()
+    tomorrow = tomorrow_date()
+
+    text = "📅 Записи на завтра:\n\n"
+    found = False
+
+    for appointment in appointments:
+        if appointment["date"] == tomorrow:
+            found = True
+            text += (
+                f"ID: {appointment['id']}\n"
+                f"👤 {appointment['name']}\n"
+                f"✂️ {appointment['service']}\n"
+                f"🕒 {appointment['time']}\n"
+                f"📞 {appointment['phone']}\n\n"
+            )
+
+    if not found:
+        text = "На завтра записей нет."
+
+    await update.message.reply_text(text, reply_markup=main_keyboard)
+
+
+async def export_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update):
+        await update.message.reply_text("⛔ У вас нет доступа к этой команде.")
         return
 
     appointments = get_appointments()
@@ -190,65 +223,26 @@ async def export_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 appointment["phone"]
             ])
 
-    await update.message.reply_document(
-        document=open(filename, "rb"),
-        filename=filename,
-        caption="📁 Экспорт заявок"
-    )
+    with open(filename, "rb") as file:
+        await update.message.reply_document(
+            document=file,
+            filename=filename,
+            caption="📁 Экспорт заявок"
+        )
 
-
-async def tomorrow_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    if not is_admin(update):
-
-        await update.message.reply_text("⛔ У вас нет доступа к этой команде.")
-
-        return
-
-    appointments = get_appointments()
-
-    text = "📅 Записи на завтра:\n\n"
-
-    found = False
-
-    for appointment in appointments:
-
-        if appointment["date"] == "Завтра":
-
-            found = True
-
-            text += (
-
-                f"ID: {appointment['id']}\n"
-
-                f"👤 {appointment['name']}\n"
-
-                f"✂️ {appointment['service']}\n"
-
-                f"🕒 {appointment['time']}\n"
-
-                f"📞 {appointment['phone']}\n\n"
-
-            )
-
-    if not found:
-
-        text = "На завтра записей нет."
-
-    await update.message.reply_text(text, reply_markup=main_keyboard)
 
 async def clients_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
     if not is_admin(update):
-        await update.message.reply_text(
-            "⛔ У вас нет доступа к этой команде."
-        )
+        await update.message.reply_text("⛔ У вас нет доступа к этой команде.")
         return
 
     clients = get_all_clients()
 
     if not clients:
-        await update.message.reply_text("Клиентов пока нет.")
+        await update.message.reply_text(
+            "Клиентов пока нет.",
+            reply_markup=main_keyboard
+        )
         return
 
     text = "👥 База клиентов\n\n"
@@ -259,84 +253,65 @@ async def clients_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"📞 {phone}\n\n"
         )
 
-    await update.message.reply_text(text[:4000])
+    await update.message.reply_text(
+        text[:4000],
+        reply_markup=main_keyboard
+    )
 
 
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
     if not is_admin(update):
-
         await update.message.reply_text("⛔ У вас нет доступа к этой команде.")
-
         return
 
     appointments = get_appointments()
 
     total = len(appointments)
-
     haircut = 0
-
     beard = 0
-
     combo = 0
 
-    today = 0
+    today_count = 0
+    tomorrow_count = 0
 
-    tomorrow = 0
+    today = today_date()
+    tomorrow = tomorrow_date()
 
     for appointment in appointments:
-
         service = appointment["service"]
-
         date = appointment["date"]
 
         if "Стрижка" in service:
-
             haircut += 1
 
         if "Борода" in service:
-
             beard += 1
 
         if "Комплекс" in service:
-
             combo += 1
 
-        if date == "Сегодня":
+        if date == today:
+            today_count += 1
 
-            today += 1
-
-        if date == "Завтра":
-
-            tomorrow += 1
+        if date == tomorrow:
+            tomorrow_count += 1
 
     text = (
-
         "📊 Статистика записей\n\n"
-
         f"Всего записей: {total}\n\n"
-
-        f"Сегодня: {today}\n"
-
-        f"Завтра: {tomorrow}\n\n"
-
+        f"Сегодня: {today_count}\n"
+        f"Завтра: {tomorrow_count}\n\n"
         f"✂️ Стрижка: {haircut}\n"
-
         f"🧔 Борода: {beard}\n"
-
         f"💈 Комплекс: {combo}"
-
     )
 
     await update.message.reply_text(text, reply_markup=main_keyboard)
 
 
 async def finance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
     if not is_admin(update):
-        await update.message.reply_text(
-            "⛔ У вас нет доступа к этой команде."
-        )
+        await update.message.reply_text("⛔ У вас нет доступа к этой команде.")
         return
 
     stats = get_finance_stats()
@@ -349,18 +324,30 @@ async def finance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"💵 Итого: {stats['total']} AZN"
     )
 
-    await update.message.reply_text(
-        text,
-        reply_markup=main_keyboard
-    )
+    await update.message.reply_text(text, reply_markup=main_keyboard)
+
+async def backup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update):
+        await update.message.reply_text("⛔ У вас нет доступа к этой команде.")
+        return
+
+    filename = "appointments.db"
+
+    if not os.path.exists(filename):
+        await update.message.reply_text("❌ База данных не найдена.")
+        return
+
+    with open(filename, "rb") as file:
+        await update.message.reply_document(
+            document=file,
+            filename=filename,
+            caption="🗄 Резервная копия базы данных"
+        )
 
 
 async def delete_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    
     if not is_admin(update):
-        await update.message.reply_text(
-            "⛔ У вас нет доступа к этой команде."
-        )
+        await update.message.reply_text("⛔ У вас нет доступа к этой команде.")
         return
 
     if len(context.args) != 1:
@@ -384,12 +371,10 @@ async def delete_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def find_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
     if not is_admin(update):
-        await update.message.reply_text(
-            "⛔ У вас нет доступа к этой команде."
-        )
+        await update.message.reply_text("⛔ У вас нет доступа к этой команде.")
         return
+
     if len(context.args) != 1:
         await update.message.reply_text("Использование: /find НОМЕР")
         return
@@ -474,7 +459,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if message_lower in ["свободное время", "свободные слоты", "🕒 свободное время"]:
         await update.message.reply_text(
-            get_free_slots_text("Сегодня"),
+            get_free_slots_text(today_date()),
             reply_markup=main_keyboard
         )
         return
@@ -540,23 +525,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         if state["step"] == "date":
-            if user_message == "📅 Сегодня":
-                state["date"] = "Сегодня"
-
-            elif user_message == "📅 Завтра":
-                state["date"] = "Завтра"
-
-            elif user_message == "📅 Другая дата":
+            if user_message == "📅 Другая дата":
                 state["step"] = "custom_date"
 
                 await update.message.reply_text(
-                    "Напишите дату, например: 20 июня"
+                    "Напишите дату, например: 20.06.2026"
                 )
                 return
 
-            else:
-                state["date"] = user_message
-
+            state["date"] = normalize_date(user_message)
             state["step"] = "time"
 
             await update.message.reply_text(
@@ -566,7 +543,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         if state["step"] == "custom_date":
-            state["date"] = user_message
+            state["date"] = normalize_date(user_message)
             state["step"] = "time"
 
             await update.message.reply_text(
@@ -705,7 +682,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     all_slots = ["10:00", "11:00", "12:00", "13:00", "14:00", "15:00"]
-    busy_slots = get_busy_slots("Сегодня")
+    busy_slots = get_busy_slots(today_date())
 
     free_slots = []
 
@@ -738,6 +715,7 @@ app.add_handler(CommandHandler("stats", stats_command))
 app.add_handler(CommandHandler("finance", finance_command))
 app.add_handler(CommandHandler("clients", clients_command))
 app.add_handler(CommandHandler("export", export_command))
+app.add_handler(CommandHandler("backup", backup_command))
 app.add_handler(CallbackQueryHandler(handle_approval))
 
 app.add_handler(
