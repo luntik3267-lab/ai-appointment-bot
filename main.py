@@ -28,7 +28,8 @@ from database import (
     delete_appointment,
     find_appointments_by_phone,
     get_finance_stats,
-    get_all_clients
+    get_all_clients,
+    clear_appointments
 )
 
 from ai import ask_ai
@@ -229,6 +230,18 @@ async def export_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             filename=filename,
             caption="📁 Экспорт заявок"
         )
+
+async def clear_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update):
+        await update.message.reply_text("⛔ У вас нет доступа к этой команде.")
+        return
+
+    clear_appointments()
+
+    await update.message.reply_text(
+        "🧹 Все заявки удалены.",
+        reply_markup=main_keyboard
+    )
 
 
 async def clients_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -717,6 +730,7 @@ app.add_handler(CommandHandler("clients", clients_command))
 app.add_handler(CommandHandler("export", export_command))
 app.add_handler(CommandHandler("backup", backup_command))
 app.add_handler(CallbackQueryHandler(handle_approval))
+app.add_handler(CommandHandler("clear", clear_command))
 
 app.add_handler(
     MessageHandler(

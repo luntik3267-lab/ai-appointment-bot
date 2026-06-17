@@ -196,3 +196,12 @@ def get_all_clients():
         clients[appointment["phone"]] = appointment["name"]
 
     return clients
+
+def clear_appointments():
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute("DELETE FROM appointments")
+
+    conn.commit()
+    conn.close()
