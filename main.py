@@ -40,7 +40,6 @@ TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 OWNER_ID = 6064588259
 
 init_db()
-
 user_states = {}
 
 main_keyboard = ReplyKeyboardMarkup(
@@ -54,20 +53,12 @@ main_keyboard = ReplyKeyboardMarkup(
 )
 
 service_keyboard = ReplyKeyboardMarkup(
-    [
-        ["✂️ Стрижка"],
-        ["🧔 Борода"],
-        ["💈 Комплекс"]
-    ],
+    [["✂️ Стрижка"], ["🧔 Борода"], ["💈 Комплекс"]],
     resize_keyboard=True
 )
 
 date_keyboard = ReplyKeyboardMarkup(
-    [
-        ["📅 Сегодня"],
-        ["📅 Завтра"],
-        ["📅 Другая дата"]
-    ],
+    [["📅 Сегодня"], ["📅 Завтра"], ["📅 Другая дата"]],
     resize_keyboard=True
 )
 
@@ -96,10 +87,8 @@ def tomorrow_date():
 def normalize_date(text):
     if text == "📅 Сегодня":
         return today_date()
-
     if text == "📅 Завтра":
         return tomorrow_date()
-
     return text.strip()
 
 
@@ -136,13 +125,11 @@ async def today_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     appointments = get_appointments()
-    today = today_date()
-
     text = "📅 Записи на сегодня:\n\n"
     found = False
 
     for appointment in appointments:
-        if appointment["date"] == today:
+        if appointment["date"] == today_date():
             found = True
             text += (
                 f"ID: {appointment['id']}\n"
@@ -164,13 +151,11 @@ async def tomorrow_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     appointments = get_appointments()
-    tomorrow = tomorrow_date()
-
     text = "📅 Записи на завтра:\n\n"
     found = False
 
     for appointment in appointments:
-        if appointment["date"] == tomorrow:
+        if appointment["date"] == tomorrow_date():
             found = True
             text += (
                 f"ID: {appointment['id']}\n"
@@ -194,25 +179,14 @@ async def export_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     appointments = get_appointments()
 
     if not appointments:
-        await update.message.reply_text(
-            "Заявок пока нет.",
-            reply_markup=main_keyboard
-        )
+        await update.message.reply_text("Заявок пока нет.", reply_markup=main_keyboard)
         return
 
     filename = "appointments_export.csv"
 
     with open(filename, "w", newline="", encoding="utf-8-sig") as file:
         writer = csv.writer(file)
-
-        writer.writerow([
-            "ID",
-            "Имя",
-            "Услуга",
-            "Дата",
-            "Время",
-            "Телефон"
-        ])
+        writer.writerow(["ID", "Имя", "Услуга", "Дата", "Время", "Телефон"])
 
         for appointment in appointments:
             writer.writerow([
@@ -230,6 +204,7 @@ async def export_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             filename=filename,
             caption="📁 Экспорт заявок"
         )
+
 
 async def clear_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update):
@@ -252,24 +227,15 @@ async def clients_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     clients = get_all_clients()
 
     if not clients:
-        await update.message.reply_text(
-            "Клиентов пока нет.",
-            reply_markup=main_keyboard
-        )
+        await update.message.reply_text("Клиентов пока нет.", reply_markup=main_keyboard)
         return
 
     text = "👥 База клиентов\n\n"
 
     for phone, name in clients.items():
-        text += (
-            f"👤 {name}\n"
-            f"📞 {phone}\n\n"
-        )
+        text += f"👤 {name}\n📞 {phone}\n\n"
 
-    await update.message.reply_text(
-        text[:4000],
-        reply_markup=main_keyboard
-    )
+    await update.message.reply_text(text[:4000], reply_markup=main_keyboard)
 
 
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -283,12 +249,8 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     haircut = 0
     beard = 0
     combo = 0
-
     today_count = 0
     tomorrow_count = 0
-
-    today = today_date()
-    tomorrow = tomorrow_date()
 
     for appointment in appointments:
         service = appointment["service"]
@@ -296,17 +258,13 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if "Стрижка" in service:
             haircut += 1
-
         if "Борода" in service:
             beard += 1
-
         if "Комплекс" in service:
             combo += 1
-
-        if date == today:
+        if date == today_date():
             today_count += 1
-
-        if date == tomorrow:
+        if date == tomorrow_date():
             tomorrow_count += 1
 
     text = (
@@ -338,6 +296,7 @@ async def finance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     await update.message.reply_text(text, reply_markup=main_keyboard)
+
 
 async def backup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update):
@@ -377,10 +336,7 @@ async def delete_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     except Exception:
-        await update.message.reply_text(
-            "❌ Неверный ID.",
-            reply_markup=main_keyboard
-        )
+        await update.message.reply_text("❌ Неверный ID.", reply_markup=main_keyboard)
 
 
 async def find_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -396,10 +352,7 @@ async def find_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     results = find_appointments_by_phone(phone)
 
     if not results:
-        await update.message.reply_text(
-            "❌ Записи не найдены.",
-            reply_markup=main_keyboard
-        )
+        await update.message.reply_text("❌ Записи не найдены.", reply_markup=main_keyboard)
         return
 
     text = "📞 Найденные записи:\n\n"
@@ -414,38 +367,45 @@ async def find_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"Телефон: {appointment['phone']}\n\n"
         )
 
-    await update.message.reply_text(
-        text[:4000],
-        reply_markup=main_keyboard
-    )
+    await update.message.reply_text(text[:4000], reply_markup=main_keyboard)
 
 
 async def handle_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    action, telegram_id = query.data.split(":")
-    telegram_id = int(telegram_id)
+    action, value = query.data.split(":")
+    value = int(value)
+
+    if action == "cancel":
+        delete_appointment(value)
+
+        await query.edit_message_text(
+            query.message.text + "\n\n✅ Запись отменена."
+        )
+        return
 
     if action == "approve":
         await context.bot.send_message(
-            chat_id=telegram_id,
+            chat_id=value,
             text="✅ Ваша запись подтверждена."
         )
 
         await query.edit_message_text(
             query.message.text + "\n\n✅ Подтверждено"
         )
+        return
 
-    elif action == "reject":
+    if action == "reject":
         await context.bot.send_message(
-            chat_id=telegram_id,
+            chat_id=value,
             text="❌ К сожалению, запись отклонена."
         )
 
         await query.edit_message_text(
             query.message.text + "\n\n❌ Отклонено"
         )
+        return
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -509,11 +469,21 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"Телефон: {appointment['phone']}\n\n"
                 )
 
-            text += "Чтобы отменить запись, напишите:\n/delete ID"
+            keyboard_buttons = []
+
+            for appointment in results:
+                keyboard_buttons.append([
+                    InlineKeyboardButton(
+                        f"❌ Отменить запись #{appointment['id']}",
+                        callback_data=f"cancel:{appointment['id']}"
+                    )
+                ])
+
+            keyboard = InlineKeyboardMarkup(keyboard_buttons)
 
             await update.message.reply_text(
                 text[:4000],
-                reply_markup=main_keyboard
+                reply_markup=keyboard
             )
             return
 
@@ -578,9 +548,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             state["time"] = selected_time
             state["step"] = "phone"
 
-            await update.message.reply_text(
-                "Оставьте номер телефона:"
-            )
+            await update.message.reply_text("Оставьте номер телефона:")
             return
 
         if state["step"] == "phone":
@@ -591,7 +559,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 state["service"],
                 state["date"],
                 state["time"],
-                state["phone"]
+                state["phone"],
+                state["telegram_id"]
             )
 
             try:
@@ -729,8 +698,8 @@ app.add_handler(CommandHandler("finance", finance_command))
 app.add_handler(CommandHandler("clients", clients_command))
 app.add_handler(CommandHandler("export", export_command))
 app.add_handler(CommandHandler("backup", backup_command))
-app.add_handler(CallbackQueryHandler(handle_approval))
 app.add_handler(CommandHandler("clear", clear_command))
+app.add_handler(CallbackQueryHandler(handle_approval))
 
 app.add_handler(
     MessageHandler(
