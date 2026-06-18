@@ -682,11 +682,37 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=main_keyboard
     )
 
+async def send_tomorrow_reminders(context: ContextTypes.DEFAULT_TYPE):
+    appointments = get_appointments()
+    tomorrow = tomorrow_date()
+
+    for appointment in appointments:
+        if appointment["date"] == tomorrow and appointment["telegram_id"]:
+            try:
+                await context.bot.send_message(
+                    chat_id=int(appointment["telegram_id"]),
+                    text=(
+                        "🔔 Напоминание о записи\n\n"
+                        f"Вы записаны на завтра.\n\n"
+                        f"✂️ Услуга: {appointment['service']}\n"
+                        f"📅 Дата: {appointment['date']}\n"
+                        f"🕒 Время: {appointment['time']}\n\n"
+                        "Ждём вас!"
+                    )
+                )
+            except Exception as e:
+                print("Ошибка напоминания:", e)
 
 app = (
     ApplicationBuilder()
     .token(TOKEN)
     .build()
+)
+
+app.job_queue.run_repeating(
+    send_tomorrow_reminders,
+    interval=86400,
+    first=10
 )
 
 app.add_handler(CommandHandler("today", today_command))
