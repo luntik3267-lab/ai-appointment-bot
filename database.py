@@ -21,6 +21,14 @@ def init_db():
     """)
 
     try:
+     cursor.execute("""
+    ALTER TABLE appointments
+    ADD COLUMN telegram_id TEXT DEFAULT ''
+    """)
+    except:
+     pass
+
+    try:
         cursor.execute("""
         ALTER TABLE appointments
         ADD COLUMN appointment_time TEXT DEFAULT ''
@@ -32,7 +40,7 @@ def init_db():
     conn.close()
 
 
-def add_appointment(name, service, appointment_date, appointment_time, phone):
+def add_appointment(name, service, appointment_date, appointment_time, phone, telegram_id=""):
     conn = connect()
     cursor = conn.cursor()
 
@@ -42,15 +50,17 @@ def add_appointment(name, service, appointment_date, appointment_time, phone):
         service,
         appointment_date,
         appointment_time,
-        phone
+        phone,
+        telegram_id
     )
-    VALUES (?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?)
     """, (
         name,
         service,
         appointment_date,
         appointment_time,
-        phone
+        phone,
+        telegram_id
     ))
 
     conn.commit()
@@ -68,7 +78,8 @@ def get_appointments():
         service,
         appointment_date,
         appointment_time,
-        phone
+        phone,
+        telegram_id
     FROM appointments
     ORDER BY id DESC
     """)
@@ -85,7 +96,8 @@ def get_appointments():
             "service": row[2],
             "date": row[3],
             "time": row[4],
-            "phone": row[5]
+            "phone": row[5],
+            "telegram_id": row[6]
         })
 
     return appointments
@@ -205,3 +217,18 @@ def clear_appointments():
 
     conn.commit()
     conn.close()
+
+def get_appointments_by_date(date):
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT * FROM appointments WHERE date = ?",
+        (date,)
+    )
+
+    rows = cursor.fetchall()
+
+    conn.close()
+
+    return rows
