@@ -683,6 +683,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def send_tomorrow_reminders(context: ContextTypes.DEFAULT_TYPE):
+    print("Проверка напоминаний...")
+    print(get_appointments())
+    
     appointments = get_appointments()
     tomorrow = tomorrow_date()
 
