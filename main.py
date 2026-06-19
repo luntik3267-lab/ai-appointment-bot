@@ -57,6 +57,15 @@ service_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
+barber_keyboard = ReplyKeyboardMarkup(
+    [
+        ["💈 Али"],
+        ["💈 Рашад"],
+        ["💈 Эльвин"]
+    ],
+    resize_keyboard=True
+)
+
 date_keyboard = ReplyKeyboardMarkup(
     [["📅 Сегодня"], ["📅 Завтра"], ["📅 Другая дата"]],
     resize_keyboard=True
@@ -552,6 +561,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if state["step"] == "service":
             state["service"] = user_message
+            state["step"] = "barber"
+
+            await update.message.reply_text(
+                "Выберите мастера:",
+                reply_markup=barber_keyboard
+            )
+            return
+
+        if state["step"] == "barber":
+            state["barber"] = user_message
             state["step"] = "date"
 
             await update.message.reply_text(
@@ -610,6 +629,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             appointment_id = add_appointment(
                 state["name"],
                 state["service"],
+                state["barber"],
                 state["date"],
                 state["time"],
                 state["phone"],
@@ -636,6 +656,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         "🚨 Новая заявка\n\n"
                         f"Имя: {state['name']}\n"
                         f"Услуга: {state['service']}\n"
+                        f"💈 Мастер: {state['barber']}\n"
                         f"Дата: {state['date']}\n"
                         f"Время: {state['time']}\n"
                         f"Телефон: {state['phone']}"

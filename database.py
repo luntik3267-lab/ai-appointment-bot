@@ -14,6 +14,7 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT,
         service TEXT,
+        barber TEXT DEFAULT '',
         appointment_date TEXT,
         appointment_time TEXT DEFAULT '',
         phone TEXT
@@ -36,11 +37,19 @@ def init_db():
     except:
         pass
 
+    try:
+     cursor.execute("""
+     ALTER TABLE appointments
+     ADD COLUMN barber TEXT DEFAULT ''
+     """)
+    except:
+      pass
+
     conn.commit()
     conn.close()
 
 
-def add_appointment(name, service, appointment_date, appointment_time, phone, telegram_id=""):
+def add_appointment(name, service, barber, appointment_date, appointment_time, phone, telegram_id=""):
     conn = connect()
     cursor = conn.cursor()
 
@@ -48,6 +57,7 @@ def add_appointment(name, service, appointment_date, appointment_time, phone, te
     INSERT INTO appointments (
         name,
         service,
+        barber,
         appointment_date,
         appointment_time,
         phone,
