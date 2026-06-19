@@ -519,43 +519,43 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
    
 
     if message_lower in ["📆 расписание", "расписание"]:
-     appointments = get_appointments()
+      appointments = get_appointments()
 
-    text = "📆 Расписание на 7 дней\n\n"
+      text = "📆 Расписание на 7 дней\n\n"
 
-    for i in range(7):
-        date = (datetime.now() + timedelta(days=i)).strftime("%d.%m.%Y")
-        text += f"📅 {date}\n\n"
+      for i in range(7):
+          date = (datetime.now() + timedelta(days=i)).strftime("%d.%m.%Y")
+          text += f"📅 {date}\n\n"
 
-        for barber in BARBERS:
-            text += f"{barber}\n"
+          for barber in BARBERS:
+              text += f"{barber}\n"
 
-            for slot in ALL_SLOTS:
-                busy = False
+              for slot in ALL_SLOTS:
+                  busy = False
 
-                for appointment in appointments:
-                    if (
-                        appointment["date"] == date
-                        and appointment["time"] == slot
-                        and appointment["barber"] == barber
-                    ):
-                        busy = True
-                        break
+                  for appointment in appointments:
+                      if (
+                          appointment["date"] == date
+                          and appointment["time"] == slot
+                          and appointment["barber"] == barber
+                      ):
+                          busy = True
+                          break
 
-                if busy:
-                    text += f"❌ {slot} занято\n"
-                else:
-                    text += f"✅ {slot} свободно\n"
+                  if busy:
+                      text += f"❌ {slot} занято\n"
+                  else:
+                      text += f"✅ {slot} свободно\n"
 
-            text += "\n"
+              text += "\n"
 
-        text += "────────────\n\n"
+          text += "────────────\n\n"
 
-    await update.message.reply_text(
-        text[:4000],
-        reply_markup=main_keyboard
-    )
-    return
+      await update.message.reply_text(
+          text[:4000],
+          reply_markup=main_keyboard
+      )
+      return
 
     if user_id in user_states:
         state = user_states[user_id]
