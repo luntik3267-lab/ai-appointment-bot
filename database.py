@@ -48,7 +48,6 @@ def init_db():
     conn.commit()
     conn.close()
 
-
 def add_appointment(name, service, barber, appointment_date, appointment_time, phone, telegram_id=""):
     conn = connect()
     cursor = conn.cursor()
@@ -63,19 +62,22 @@ def add_appointment(name, service, barber, appointment_date, appointment_time, p
         phone,
         telegram_id
     )
-    VALUES (?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
     """, (
         name,
         service,
+        barber,
         appointment_date,
         appointment_time,
         phone,
         telegram_id
     ))
 
-    conn.commit()
     appointment_id = cursor.lastrowid
+
+    conn.commit()
     conn.close()
+
     return appointment_id
 
 
