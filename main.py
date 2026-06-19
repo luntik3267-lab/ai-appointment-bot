@@ -3,13 +3,7 @@ import csv
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
 
-from telegram import (
-    Update,
-    ReplyKeyboardMarkup,
-    InlineKeyboardButton,
-    InlineKeyboardMarkup
-)
-
+from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder,
     MessageHandler,
@@ -42,7 +36,16 @@ OWNER_ID = 6064588259
 init_db()
 user_states = {}
 
-main_keyboard = ReplyKeyboardMarkup(
+client_keyboard = ReplyKeyboardMarkup(
+    [
+        ["📝 Записаться"],
+        ["📆 Расписание"],
+        ["🕒 Свободное время"]
+    ],
+    resize_keyboard=True
+)
+
+admin_keyboard = ReplyKeyboardMarkup(
     [
         ["📅 Сегодняшние записи"],
         ["📝 Записаться"],
@@ -60,11 +63,7 @@ service_keyboard = ReplyKeyboardMarkup(
 )
 
 barber_keyboard = ReplyKeyboardMarkup(
-    [
-        ["💈 Али"],
-        ["💈 Рашад"],
-        ["💈 Эльвин"]
-    ],
+    [["💈 Али"], ["💈 Рашад"], ["💈 Эльвин"]],
     resize_keyboard=True
 )
 
@@ -83,19 +82,17 @@ time_keyboard = ReplyKeyboardMarkup(
 )
 
 BARBERS = ["💈 Али", "💈 Рашад", "💈 Эльвин"]
-
-ALL_SLOTS = [
-    "10:00",
-    "11:00",
-    "12:00",
-    "13:00",
-    "14:00",
-    "15:00"
-]
+ALL_SLOTS = ["10:00", "11:00", "12:00", "13:00", "14:00", "15:00"]
 
 
 def is_admin(update):
     return update.effective_user.id == OWNER_ID
+
+
+def get_keyboard(update):
+    if is_admin(update):
+        return admin_keyboard
+    return client_keyboard
 
 
 def today_date():
@@ -127,12 +124,10 @@ def clean_time(text):
 
 
 def get_free_slots_text(appointment_date):
-    all_slots = ["10:00", "11:00", "12:00", "13:00", "14:00", "15:00"]
     busy_slots = get_busy_slots(appointment_date)
-
     text = f"🕒 Свободное время на {appointment_date}:\n\n"
 
-    for slot in all_slots:
+    for slot in ALL_SLOTS:
         if slot in busy_slots:
             text += f"❌ {slot} занято\n"
         else:
@@ -143,7 +138,7 @@ def get_free_slots_text(appointment_date):
 
 async def today_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update):
-        await update.message.reply_text("⛔ У вас нет доступа к этой команде.")
+        await update.message.reply_text("⛔ У вас нет доступа к этой команде.", reply_markup=get_keyboard(update))
         return
 
     appointments = get_appointments()
@@ -157,6 +152,7 @@ async def today_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"ID: {appointment['id']}\n"
                 f"👤 {appointment['name']}\n"
                 f"✂️ {appointment['service']}\n"
+                f"💈 Мастер: {appointment['barber']}\n"
                 f"🕒 {appointment['time']}\n"
                 f"📞 {appointment['phone']}\n\n"
             )
@@ -164,12 +160,12 @@ async def today_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not found:
         text = "На сегодня записей нет."
 
-    await update.message.reply_text(text, reply_markup=main_keyboard)
+    await update.message.reply_text(text, reply_markup=get_keyboard(update))
 
 
 async def tomorrow_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update):
-        await update.message.reply_text("⛔ У вас нет доступа к этой команде.")
+        await update.message.reply_text("⛔ У вас нет доступа к этой команде.", reply_markup=get_keyboard(update))
         return
 
     appointments = get_appointments()
@@ -183,6 +179,7 @@ async def tomorrow_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"ID: {appointment['id']}\n"
                 f"👤 {appointment['name']}\n"
                 f"✂️ {appointment['service']}\n"
+                f"💈 Мастер: {appointment['barber']}\n"
                 f"🕒 {appointment['time']}\n"
                 f"📞 {appointment['phone']}\n\n"
             )
@@ -190,66 +187,59 @@ async def tomorrow_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not found:
         text = "На завтра записей нет."
 
-    await update.message.reply_text(text, reply_markup=main_keyboard)
+    await update.message.reply_text(text, reply_markup=get_keyboard(update))
 
 
 async def export_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update):
-        await update.message.reply_text("⛔ У вас нет доступа к этой команде.")
+        await update.message.reply_text("⛔ У вас нет доступа к этой команде.", reply_markup=get_keyboard(update))
         return
 
     appointments = get_appointments()
 
     if not appointments:
-        await update.message.reply_text("Заявок пока нет.", reply_markup=main_keyboard)
+        await update.message.reply_text("Заявок пока нет.", reply_markup=get_keyboard(update))
         return
 
     filename = "appointments_export.csv"
 
     with open(filename, "w", newline="", encoding="utf-8-sig") as file:
         writer = csv.writer(file)
-        writer.writerow(["ID", "Имя", "Услуга", "Дата", "Время", "Телефон"])
+        writer.writerow(["ID", "Имя", "Услуга", "Мастер", "Дата", "Время", "Телефон"])
 
         for appointment in appointments:
             writer.writerow([
                 appointment["id"],
                 appointment["name"],
                 appointment["service"],
+                appointment["barber"],
                 appointment["date"],
                 appointment["time"],
                 appointment["phone"]
             ])
 
     with open(filename, "rb") as file:
-        await update.message.reply_document(
-            document=file,
-            filename=filename,
-            caption="📁 Экспорт заявок"
-        )
+        await update.message.reply_document(document=file, filename=filename, caption="📁 Экспорт заявок")
 
 
 async def clear_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update):
-        await update.message.reply_text("⛔ У вас нет доступа к этой команде.")
+        await update.message.reply_text("⛔ У вас нет доступа к этой команде.", reply_markup=get_keyboard(update))
         return
 
     clear_appointments()
-
-    await update.message.reply_text(
-        "🧹 Все заявки удалены.",
-        reply_markup=main_keyboard
-    )
+    await update.message.reply_text("🧹 Все заявки удалены.", reply_markup=get_keyboard(update))
 
 
 async def clients_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update):
-        await update.message.reply_text("⛔ У вас нет доступа к этой команде.")
+        await update.message.reply_text("⛔ У вас нет доступа к этой команде.", reply_markup=get_keyboard(update))
         return
 
     clients = get_all_clients()
 
     if not clients:
-        await update.message.reply_text("Клиентов пока нет.", reply_markup=main_keyboard)
+        await update.message.reply_text("Клиентов пока нет.", reply_markup=get_keyboard(update))
         return
 
     text = "👥 База клиентов\n\n"
@@ -257,12 +247,12 @@ async def clients_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for phone, name in clients.items():
         text += f"👤 {name}\n📞 {phone}\n\n"
 
-    await update.message.reply_text(text[:4000], reply_markup=main_keyboard)
+    await update.message.reply_text(text[:4000], reply_markup=get_keyboard(update))
 
 
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update):
-        await update.message.reply_text("⛔ У вас нет доступа к этой команде.")
+        await update.message.reply_text("⛔ У вас нет доступа к этой команде.", reply_markup=get_keyboard(update))
         return
 
     appointments = get_appointments()
@@ -299,12 +289,12 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"💈 Комплекс: {combo}"
     )
 
-    await update.message.reply_text(text, reply_markup=main_keyboard)
+    await update.message.reply_text(text, reply_markup=get_keyboard(update))
 
 
 async def finance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update):
-        await update.message.reply_text("⛔ У вас нет доступа к этой команде.")
+        await update.message.reply_text("⛔ У вас нет доступа к этой команде.", reply_markup=get_keyboard(update))
         return
 
     stats = get_finance_stats()
@@ -317,64 +307,55 @@ async def finance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"💵 Итого: {stats['total']} AZN"
     )
 
-    await update.message.reply_text(text, reply_markup=main_keyboard)
+    await update.message.reply_text(text, reply_markup=get_keyboard(update))
 
 
 async def backup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update):
-        await update.message.reply_text("⛔ У вас нет доступа к этой команде.")
+        await update.message.reply_text("⛔ У вас нет доступа к этой команде.", reply_markup=get_keyboard(update))
         return
 
     filename = "appointments.db"
 
     if not os.path.exists(filename):
-        await update.message.reply_text("❌ База данных не найдена.")
+        await update.message.reply_text("❌ База данных не найдена.", reply_markup=get_keyboard(update))
         return
 
     with open(filename, "rb") as file:
-        await update.message.reply_document(
-            document=file,
-            filename=filename,
-            caption="🗄 Резервная копия базы данных"
-        )
+        await update.message.reply_document(document=file, filename=filename, caption="🗄 Резервная копия базы данных")
 
 
 async def delete_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update):
-        await update.message.reply_text("⛔ У вас нет доступа к этой команде.")
+        await update.message.reply_text("⛔ У вас нет доступа к этой команде.", reply_markup=get_keyboard(update))
         return
 
     if len(context.args) != 1:
-        await update.message.reply_text("Использование: /delete ID")
+        await update.message.reply_text("Использование: /delete ID", reply_markup=get_keyboard(update))
         return
 
     try:
         appointment_id = int(context.args[0])
         delete_appointment(appointment_id)
-
-        await update.message.reply_text(
-            f"✅ Запись #{appointment_id} удалена.",
-            reply_markup=main_keyboard
-        )
-
+        await update.message.reply_text(f"✅ Запись #{appointment_id} удалена.", reply_markup=get_keyboard(update))
     except Exception:
-        await update.message.reply_text("❌ Неверный ID.", reply_markup=main_keyboard)
+        await update.message.reply_text("❌ Неверный ID.", reply_markup=get_keyboard(update))
 
 
 async def find_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update):
-        await update.message.reply_text("⛔ У вас нет доступа к этой команде.")
+        await update.message.reply_text("⛔ У вас нет доступа к этой команде.", reply_markup=get_keyboard(update))
         return
 
     if len(context.args) != 1:
-        await update.message.reply_text("Использование: /find НОМЕР")
+        await update.message.reply_text("Использование: /find НОМЕР", reply_markup=get_keyboard(update))
         return
 
     phone = context.args[0]
     results = find_appointments_by_phone(phone)
 
     if not results:
-        await update.message.reply_text("❌ Записи не найдены.", reply_markup=main_keyboard)
+        await update.message.reply_text("❌ Записи не найдены.", reply_markup=get_keyboard(update))
         return
 
     text = "📞 Найденные записи:\n\n"
@@ -384,12 +365,13 @@ async def find_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"ID: {appointment['id']}\n"
             f"Имя: {appointment['name']}\n"
             f"Услуга: {appointment['service']}\n"
+            f"💈 Мастер: {appointment.get('barber', '')}\n"
             f"Дата: {appointment['date']}\n"
             f"Время: {appointment['time']}\n"
             f"Телефон: {appointment['phone']}\n\n"
         )
 
-    await update.message.reply_text(text[:4000], reply_markup=main_keyboard)
+    await update.message.reply_text(text[:4000], reply_markup=get_keyboard(update))
 
 
 async def handle_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -404,12 +386,7 @@ async def handle_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
         telegram_id = int(parts[2])
 
         keyboard = InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton(
-                    "❌ Отменить запись",
-                    callback_data=f"client_cancel:{appointment_id}"
-                )
-            ]
+            [InlineKeyboardButton("❌ Отменить запись", callback_data=f"client_cancel:{appointment_id}")]
         ])
 
         await context.bot.send_message(
@@ -418,9 +395,7 @@ async def handle_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=keyboard
         )
 
-        await query.edit_message_text(
-            query.message.text + "\n\n✅ Подтверждено"
-        )
+        await query.edit_message_text(query.message.text + "\n\n✅ Подтверждено")
         return
 
     if action == "reject":
@@ -429,14 +404,8 @@ async def handle_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         delete_appointment(appointment_id)
 
-        await context.bot.send_message(
-            chat_id=telegram_id,
-            text="❌ К сожалению, запись отклонена."
-        )
-
-        await query.edit_message_text(
-            query.message.text + "\n\n❌ Отклонено"
-        )
+        await context.bot.send_message(chat_id=telegram_id, text="❌ К сожалению, запись отклонена.")
+        await query.edit_message_text(query.message.text + "\n\n❌ Отклонено")
         return
 
     if action == "client_cancel" or action == "cancel":
@@ -444,14 +413,8 @@ async def handle_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         keyboard = InlineKeyboardMarkup([
             [
-                InlineKeyboardButton(
-                    "✅ Да, отменить",
-                    callback_data=f"confirm_client_cancel:{appointment_id}"
-                ),
-                InlineKeyboardButton(
-                    "⬅️ Нет",
-                    callback_data="dont_cancel"
-                )
+                InlineKeyboardButton("✅ Да, отменить", callback_data=f"confirm_client_cancel:{appointment_id}"),
+                InlineKeyboardButton("⬅️ Нет", callback_data="dont_cancel")
             ]
         ])
 
@@ -463,23 +426,14 @@ async def handle_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if action == "confirm_client_cancel":
         appointment_id = int(parts[1])
-
         delete_appointment(appointment_id)
 
-        await query.edit_message_text(
-            "✅ Запись отменена."
-        )
-
-        await context.bot.send_message(
-            chat_id=OWNER_ID,
-            text=f"⚠️ Клиент отменил запись #{appointment_id}"
-        )
+        await query.edit_message_text("✅ Запись отменена.")
+        await context.bot.send_message(chat_id=OWNER_ID, text=f"⚠️ Клиент отменил запись #{appointment_id}")
         return
 
     if action == "dont_cancel":
-        await query.edit_message_text(
-            "Окей, запись не отменена ✅"
-        )
+        await query.edit_message_text("Окей, запись не отменена ✅")
         return
 
 
@@ -488,74 +442,62 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
     message_lower = user_message.lower()
 
-    cancel_words = [
-        "отменить запись",
-        "отмена записи",
-        "хочу отменить",
-        "удалить запись"
-    ]
+    cancel_words = ["отменить запись", "отмена записи", "хочу отменить", "удалить запись"]
 
     if any(word in message_lower for word in cancel_words):
-        user_states[user_id] = {
-            "step": "cancel_phone"
-        }
+        user_states[user_id] = {"step": "cancel_phone"}
 
         await update.message.reply_text(
-            "Введите номер телефона, который указывали при записи:"
+            "Введите номер телефона, который указывали при записи:",
+            reply_markup=get_keyboard(update)
         )
         return
 
     if message_lower in ["свободное время", "свободные слоты", "🕒 свободное время"]:
         await update.message.reply_text(
             get_free_slots_text(today_date()),
-            reply_markup=main_keyboard
+            reply_markup=get_keyboard(update)
         )
         return
 
     if message_lower in ["📅 сегодняшние записи", "сегодняшние записи"]:
         await today_command(update, context)
         return
-    
-   
 
     if message_lower in ["📆 расписание", "расписание"]:
-      appointments = get_appointments()
+        appointments = get_appointments()
+        text = "📆 Расписание на 7 дней\n\n"
 
-      text = "📆 Расписание на 7 дней\n\n"
+        for i in range(7):
+            date = (datetime.now() + timedelta(days=i)).strftime("%d.%m.%Y")
+            text += f"📅 {date}\n\n"
 
-      for i in range(7):
-          date = (datetime.now() + timedelta(days=i)).strftime("%d.%m.%Y")
-          text += f"📅 {date}\n\n"
+            for barber in BARBERS:
+                text += f"{barber}\n"
 
-          for barber in BARBERS:
-              text += f"{barber}\n"
+                for slot in ALL_SLOTS:
+                    busy = False
 
-              for slot in ALL_SLOTS:
-                  busy = False
+                    for appointment in appointments:
+                        if (
+                            appointment["date"] == date
+                            and appointment["time"] == slot
+                            and appointment["barber"] == barber
+                        ):
+                            busy = True
+                            break
 
-                  for appointment in appointments:
-                      if (
-                          appointment["date"] == date
-                          and appointment["time"] == slot
-                          and appointment["barber"] == barber
-                      ):
-                          busy = True
-                          break
+                    if busy:
+                        text += f"❌ {slot} занято\n"
+                    else:
+                        text += f"✅ {slot} свободно\n"
 
-                  if busy:
-                      text += f"❌ {slot} занято\n"
-                  else:
-                      text += f"✅ {slot} свободно\n"
+                text += "\n"
 
-              text += "\n"
+            text += "────────────\n\n"
 
-          text += "────────────\n\n"
-
-      await update.message.reply_text(
-          text[:4000],
-          reply_markup=main_keyboard
-      )
-      return
+        await update.message.reply_text(text[:4000], reply_markup=get_keyboard(update))
+        return
 
     if user_id in user_states:
         state = user_states[user_id]
@@ -569,11 +511,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if not results:
                 await update.message.reply_text(
                     "❌ Записи по этому номеру не найдены.",
-                    reply_markup=main_keyboard
+                    reply_markup=get_keyboard(update)
                 )
                 return
 
             text = "📞 Найденные записи:\n\n"
+            keyboard_buttons = []
 
             for appointment in results:
                 text += (
@@ -585,9 +528,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"Телефон: {appointment['phone']}\n\n"
                 )
 
-            keyboard_buttons = []
-
-            for appointment in results:
                 keyboard_buttons.append([
                     InlineKeyboardButton(
                         f"❌ Отменить запись #{appointment['id']}",
@@ -596,69 +536,47 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ])
 
             keyboard = InlineKeyboardMarkup(keyboard_buttons)
-
-            await update.message.reply_text(
-                text[:4000],
-                reply_markup=keyboard
-            )
+            await update.message.reply_text(text[:4000], reply_markup=keyboard)
             return
 
         if state["step"] == "name":
             state["name"] = user_message
             state["step"] = "service"
 
-            await update.message.reply_text(
-                "Выберите услугу:",
-                reply_markup=service_keyboard
-            )
+            await update.message.reply_text("Выберите услугу:", reply_markup=service_keyboard)
             return
 
         if state["step"] == "service":
             state["service"] = user_message
             state["step"] = "barber"
 
-            await update.message.reply_text(
-                "Выберите мастера:",
-                reply_markup=barber_keyboard
-            )
+            await update.message.reply_text("Выберите мастера:", reply_markup=barber_keyboard)
             return
 
         if state["step"] == "barber":
             state["barber"] = user_message
             state["step"] = "date"
 
-            await update.message.reply_text(
-                "Выберите дату:",
-                reply_markup=date_keyboard
-            )
+            await update.message.reply_text("Выберите дату:", reply_markup=date_keyboard)
             return
 
         if state["step"] == "date":
             if user_message == "📅 Другая дата":
                 state["step"] = "custom_date"
-
-                await update.message.reply_text(
-                    "Напишите дату, например: 20.06.2026"
-                )
+                await update.message.reply_text("Напишите дату, например: 20.06.2026")
                 return
 
             state["date"] = normalize_date(user_message)
             state["step"] = "time"
 
-            await update.message.reply_text(
-                "Выберите время:",
-                reply_markup=time_keyboard
-            )
+            await update.message.reply_text("Выберите время:", reply_markup=time_keyboard)
             return
 
         if state["step"] == "custom_date":
             state["date"] = normalize_date(user_message)
             state["step"] = "time"
 
-            await update.message.reply_text(
-                "Выберите время:",
-                reply_markup=time_keyboard
-            )
+            await update.message.reply_text("Выберите время:", reply_markup=time_keyboard)
             return
 
         if state["step"] == "time":
@@ -698,8 +616,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             callback_data=f"approve:{appointment_id}:{state['telegram_id']}"
                         ),
                         InlineKeyboardButton(
-                           "❌ Отклонить",
-                           callback_data=f"reject:{appointment_id}:{state['telegram_id']}"
+                            "❌ Отклонить",
+                            callback_data=f"reject:{appointment_id}:{state['telegram_id']}"
                         )
                     ]
                 ])
@@ -725,7 +643,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             await update.message.reply_text(
                 "✅ Заявка сохранена. Ожидайте подтверждения.",
-                reply_markup=main_keyboard
+                reply_markup=get_keyboard(update)
             )
             return
 
@@ -733,7 +651,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             "Привет! Я бот для записи клиентов.\n\n"
             "Нажмите «📝 Записаться», чтобы оставить заявку.",
-            reply_markup=main_keyboard
+            reply_markup=get_keyboard(update)
         )
         return
 
@@ -745,55 +663,60 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await update.message.reply_text("Как вас зовут?")
         return
-    
+
     if message_lower in ["👥 мастера", "мастера"]:
-     appointments = get_appointments()
-
-    if not appointments:
-        await update.message.reply_text(
-            "Записей пока нет.",
-            reply_markup=main_keyboard
-        )
-        return
-
-    barbers = {}
-
-    for appointment in appointments:
-        barber = appointment["barber"]
-
-        if barber not in barbers:
-            barbers[barber] = []
-
-        barbers[barber].append(appointment)
-
-    text = "👥 Расписание мастеров\n\n"
-
-    for barber, records in barbers.items():
-        text += f"{barber}\n\n"
-
-        for record in records:
-            text += (
-                f"{record['date']} | "
-                f"{record['time']} | "
-                f"{record['name']}\n"
+        if not is_admin(update):
+            await update.message.reply_text(
+                "⛔ У вас нет доступа к этому разделу.",
+                reply_markup=get_keyboard(update)
             )
+            return
 
-        text += "\n"
-
-    await update.message.reply_text(
-        text[:4000],
-        reply_markup=main_keyboard
-    )
-    return
-
-    if message_lower in ["заявки", "📋 заявки"]:
         appointments = get_appointments()
 
         if not appointments:
+            await update.message.reply_text("Записей пока нет.", reply_markup=get_keyboard(update))
+            return
+
+        barbers = {}
+
+        for appointment in appointments:
+            barber = appointment["barber"]
+
+            if barber not in barbers:
+                barbers[barber] = []
+
+            barbers[barber].append(appointment)
+
+        text = "👥 Расписание мастеров\n\n"
+
+        for barber, records in barbers.items():
+            text += f"{barber}\n\n"
+
+            for record in records:
+                text += (
+                    f"{record['date']} | "
+                    f"{record['time']} | "
+                    f"{record['name']}\n"
+                )
+
+            text += "\n"
+
+        await update.message.reply_text(text[:4000], reply_markup=get_keyboard(update))
+        return
+
+    if message_lower in ["заявки", "📋 заявки"]:
+        if not is_admin(update):
             await update.message.reply_text(
-                "Заявок пока нет",
-                reply_markup=main_keyboard
+                "⛔ У вас нет доступа к заявкам.",
+                reply_markup=get_keyboard(update)
             )
+            return
+
+        appointments = get_appointments()
+
+        if not appointments:
+            await update.message.reply_text("Заявок пока нет", reply_markup=get_keyboard(update))
             return
 
         text = "📋 Заявки:\n\n"
@@ -803,16 +726,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"{appointment['id']}.\n"
                 f"Имя: {appointment['name']}\n"
                 f"Услуга: {appointment['service']}\n"
+                f"💈 Мастер: {appointment['barber']}\n"
                 f"Дата: {appointment['date']}\n"
                 f"Время: {appointment['time']}\n"
                 f"Телефон: {appointment['phone']}\n\n"
-                f"💈 Мастер: {appointment['barber']}\n"
             )
 
-        await update.message.reply_text(
-            text[:4000],
-            reply_markup=main_keyboard
-        )
+        await update.message.reply_text(text[:4000], reply_markup=get_keyboard(update))
         return
 
     booking_words = [
@@ -828,28 +748,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if any(word in message_lower for word in booking_words):
         await update.message.reply_text(
             "Конечно ✅\nНажмите кнопку «📝 Записаться», и я оформлю заявку.",
-            reply_markup=main_keyboard
+            reply_markup=get_keyboard(update)
         )
         return
 
-    all_slots = ["10:00", "11:00", "12:00", "13:00", "14:00", "15:00"]
-    busy_slots = get_busy_slots(today_date())
-
     free_slots = []
 
-    for slot in all_slots:
-        if slot not in busy_slots:
+    for slot in ALL_SLOTS:
+        if slot not in get_busy_slots(today_date()):
             free_slots.append(slot)
 
-    answer = ask_ai(
-        user_message,
-        ", ".join(free_slots)
-    )
+    answer = ask_ai(user_message, ", ".join(free_slots))
 
-    await update.message.reply_text(
-        answer,
-        reply_markup=main_keyboard
-    )
+    await update.message.reply_text(answer, reply_markup=get_keyboard(update))
+
 
 async def send_tomorrow_reminders(context: ContextTypes.DEFAULT_TYPE):
     print("Проверка напоминаний...")
@@ -865,8 +777,9 @@ async def send_tomorrow_reminders(context: ContextTypes.DEFAULT_TYPE):
                     chat_id=int(appointment["telegram_id"]),
                     text=(
                         "🔔 Напоминание о записи\n\n"
-                        f"Вы записаны на завтра.\n\n"
+                        "Вы записаны на завтра.\n\n"
                         f"✂️ Услуга: {appointment['service']}\n"
+                        f"💈 Мастер: {appointment['barber']}\n"
                         f"📅 Дата: {appointment['date']}\n"
                         f"🕒 Время: {appointment['time']}\n\n"
                         "Ждём вас!"
@@ -875,11 +788,8 @@ async def send_tomorrow_reminders(context: ContextTypes.DEFAULT_TYPE):
             except Exception as e:
                 print("Ошибка напоминания:", e)
 
-app = (
-    ApplicationBuilder()
-    .token(TOKEN)
-    .build()
-)
+
+app = ApplicationBuilder().token(TOKEN).build()
 
 app.job_queue.run_repeating(
     send_tomorrow_reminders,
