@@ -90,6 +90,7 @@ def get_appointments():
         id,
         name,
         service,
+        barber,
         appointment_date,
         appointment_time,
         phone,
@@ -108,10 +109,11 @@ def get_appointments():
             "id": row[0],
             "name": row[1],
             "service": row[2],
-            "date": row[3],
-            "time": row[4],
-            "phone": row[5],
-            "telegram_id": row[6]
+            "barber": row[3],
+            "date": row[4],
+            "time": row[5],
+            "phone": row[6],
+            "telegram_id": row[7]
         })
 
     return appointments
