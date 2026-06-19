@@ -47,6 +47,7 @@ main_keyboard = ReplyKeyboardMarkup(
         ["📅 Сегодняшние записи"],
         ["📝 Записаться"],
         ["📋 Заявки"],
+        ["👥 Мастера"],
         ["🕒 Свободное время"]
     ],
     resize_keyboard=True
@@ -691,6 +692,46 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await update.message.reply_text("Как вас зовут?")
         return
+    
+    if message_lower in ["👥 мастера", "мастера"]:
+     appointments = get_appointments()
+
+    if not appointments:
+        await update.message.reply_text(
+            "Записей пока нет.",
+            reply_markup=main_keyboard
+        )
+        return
+
+    barbers = {}
+
+    for appointment in appointments:
+        barber = appointment["barber"]
+
+        if barber not in barbers:
+            barbers[barber] = []
+
+        barbers[barber].append(appointment)
+
+    text = "👥 Расписание мастеров\n\n"
+
+    for barber, records in barbers.items():
+        text += f"{barber}\n\n"
+
+        for record in records:
+            text += (
+                f"{record['date']} | "
+                f"{record['time']} | "
+                f"{record['name']}\n"
+            )
+
+        text += "\n"
+
+    await update.message.reply_text(
+        text[:4000],
+        reply_markup=main_keyboard
+    )
+    return
 
     if message_lower in ["заявки", "📋 заявки"]:
         appointments = get_appointments()
