@@ -23,7 +23,8 @@ from database import (
     find_appointments_by_phone,
     get_finance_stats,
     get_all_clients,
-    clear_appointments
+    clear_appointments,
+    get_client_history
 )
 
 from ai import ask_ai
@@ -372,6 +373,40 @@ async def find_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     await update.message.reply_text(text[:4000], reply_markup=get_keyboard(update))
+
+async def history_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update):
+        return
+
+    if len(context.args) != 1:
+        await update.message.reply_text(
+            "Использование: /history НОМЕР"
+        )
+        return
+
+    phone = context.args[0]
+
+    history = get_client_history(phone)
+
+    if not history:
+        await update.message.reply_text(
+            "История не найдена."
+        )
+        return
+
+    text = f"📖 История клиента\n\n📞 {phone}\n\n"
+
+    text += f"Посещений: {len(history)}\n\n"
+
+    for record in history:
+        text += (
+            f"📅 {record[2]}\n"
+            f"🕒 {record[3]}\n"
+            f"💈 {record[1]}\n"
+            f"✂️ {record[0]}\n\n"
+        )
+
+    await update.message.reply_text(text[:4000])
 
 
 async def handle_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -803,6 +838,7 @@ app.add_handler(CommandHandler("delete", delete_command))
 app.add_handler(CommandHandler("find", find_command))
 app.add_handler(CommandHandler("stats", stats_command))
 app.add_handler(CommandHandler("finance", finance_command))
+app.add_handler(CommandHandler("history", history_command))
 app.add_handler(CommandHandler("clients", clients_command))
 app.add_handler(CommandHandler("export", export_command))
 app.add_handler(CommandHandler("backup", backup_command))

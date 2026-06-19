@@ -246,3 +246,23 @@ def get_appointments_by_date(date):
     conn.close()
 
     return rows
+
+def get_client_history(phone):
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT
+        service,
+        barber,
+        appointment_date,
+        appointment_time
+    FROM appointments
+    WHERE phone = ?
+    ORDER BY id DESC
+    """, (phone,))
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    return rows
