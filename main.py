@@ -712,6 +712,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"Дата: {appointment['date']}\n"
                 f"Время: {appointment['time']}\n"
                 f"Телефон: {appointment['phone']}\n\n"
+                f"💈 Мастер: {appointment['barber']}\n"
             )
 
         await update.message.reply_text(
