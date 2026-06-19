@@ -117,24 +117,22 @@ def get_appointments():
     return appointments
 
 
-def is_slot_busy(appointment_date, appointment_time):
-    appointments = get_appointments()
+def is_slot_busy(appointment_date, appointment_time, barber):
+    conn = connect()
+    cursor = conn.cursor()
 
-    for appointment in appointments:
-        same_date = (
-            appointment["date"].strip().lower()
-            == appointment_date.strip().lower()
-        )
+    cursor.execute("""
+    SELECT id FROM appointments
+    WHERE appointment_date = ?
+    AND appointment_time = ?
+    AND barber = ?
+    """, (appointment_date, appointment_time, barber))
 
-        same_time = (
-            appointment["time"].strip().lower()
-            == appointment_time.strip().lower()
-        )
+    result = cursor.fetchone()
 
-        if same_date and same_time:
-            return True
+    conn.close()
 
-    return False
+    return result is not None
 
 
 def get_busy_slots(appointment_date):

@@ -610,7 +610,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if state["step"] == "time":
             selected_time = clean_time(user_message)
 
-            if is_slot_busy(state["date"], selected_time):
+            if is_slot_busy(state["date"], selected_time, state["barber"]):
                 await update.message.reply_text(
                     "❌ Это время уже занято. Выберите другое.",
                     reply_markup=time_keyboard
