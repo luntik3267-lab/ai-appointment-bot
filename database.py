@@ -64,7 +64,9 @@ def add_appointment(name, service, appointment_date, appointment_time, phone, te
     ))
 
     conn.commit()
+    appointment_id = cursor.lastrowid
     conn.close()
+    return appointment_id
 
 
 def get_appointments():

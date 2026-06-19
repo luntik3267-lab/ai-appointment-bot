@@ -374,21 +374,26 @@ async def handle_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    action, value = query.data.split(":")
-    value = int(value)
-
-    if action == "cancel":
-        delete_appointment(value)
-
-        await query.edit_message_text(
-            query.message.text + "\n\n✅ Запись отменена."
-        )
-        return
+    parts = query.data.split(":")
+    action = parts[0]
 
     if action == "approve":
+        appointment_id = int(parts[1])
+        telegram_id = int(parts[2])
+
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    "❌ Отменить запись",
+                    callback_data=f"client_cancel:{appointment_id}"
+                )
+            ]
+        ])
+
         await context.bot.send_message(
-            chat_id=value,
-            text="✅ Ваша запись подтверждена."
+            chat_id=telegram_id,
+            text="✅ Ваша запись подтверждена.",
+            reply_markup=keyboard
         )
 
         await query.edit_message_text(
@@ -397,13 +402,61 @@ async def handle_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if action == "reject":
+        appointment_id = int(parts[1])
+        telegram_id = int(parts[2])
+
+        delete_appointment(appointment_id)
+
         await context.bot.send_message(
-            chat_id=value,
+            chat_id=telegram_id,
             text="❌ К сожалению, запись отклонена."
         )
 
         await query.edit_message_text(
             query.message.text + "\n\n❌ Отклонено"
+        )
+        return
+
+    if action == "client_cancel" or action == "cancel":
+        appointment_id = int(parts[1])
+
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    "✅ Да, отменить",
+                    callback_data=f"confirm_client_cancel:{appointment_id}"
+                ),
+                InlineKeyboardButton(
+                    "⬅️ Нет",
+                    callback_data="dont_cancel"
+                )
+            ]
+        ])
+
+        await query.edit_message_text(
+            query.message.text + "\n\nВы уверены, что хотите отменить запись?",
+            reply_markup=keyboard
+        )
+        return
+
+    if action == "confirm_client_cancel":
+        appointment_id = int(parts[1])
+
+        delete_appointment(appointment_id)
+
+        await query.edit_message_text(
+            "✅ Запись отменена."
+        )
+
+        await context.bot.send_message(
+            chat_id=OWNER_ID,
+            text=f"⚠️ Клиент отменил запись #{appointment_id}"
+        )
+        return
+
+    if action == "dont_cancel":
+        await query.edit_message_text(
+            "Окей, запись не отменена ✅"
         )
         return
 
@@ -554,7 +607,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if state["step"] == "phone":
             state["phone"] = user_message
 
-            add_appointment(
+            appointment_id = add_appointment(
                 state["name"],
                 state["service"],
                 state["date"],
@@ -568,11 +621,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     [
                         InlineKeyboardButton(
                             "✅ Подтвердить",
-                            callback_data=f"approve:{state['telegram_id']}"
+                            callback_data=f"approve:{appointment_id}:{state['telegram_id']}"
                         ),
                         InlineKeyboardButton(
-                            "❌ Отклонить",
-                            callback_data=f"reject:{state['telegram_id']}"
+                           "❌ Отклонить",
+                           callback_data=f"reject:{appointment_id}:{state['telegram_id']}"
                         )
                     ]
                 ])
@@ -685,7 +738,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def send_tomorrow_reminders(context: ContextTypes.DEFAULT_TYPE):
     print("Проверка напоминаний...")
     print(get_appointments())
-    
+
     appointments = get_appointments()
     tomorrow = tomorrow_date()
 
