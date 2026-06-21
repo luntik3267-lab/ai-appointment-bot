@@ -28,7 +28,8 @@ from database import (
     add_to_blacklist,
     remove_from_blacklist,
     is_blacklisted,
-    get_blacklist
+    get_blacklist,
+    get_today_appointments,
 )
 
 from ai import ask_ai
@@ -968,6 +969,39 @@ async def send_tomorrow_reminders(context: ContextTypes.DEFAULT_TYPE):
             except Exception as e:
                 print("Ошибка напоминания:", e)
 
+async def send_two_hour_reminders(context: ContextTypes.DEFAULT_TYPE):
+    print("Проверка напоминаний за 2 часа...")
+
+    appointments = get_appointments()
+    now = datetime.now()
+
+    for appointment in appointments:
+        try:
+            appointment_datetime = datetime.strptime(
+                f"{appointment['date']} {appointment['time']}",
+                "%d.%m.%Y %H:%M"
+            )
+
+            difference = appointment_datetime - now
+
+            if timedelta(hours=1, minutes=50) <= difference <= timedelta(hours=2, minutes=10):
+                if appointment["telegram_id"]:
+                    await context.bot.send_message(
+                        chat_id=int(appointment["telegram_id"]),
+                        text=(
+                            "🔔 Напоминание о записи\n\n"
+                            "Ваша запись примерно через 2 часа.\n\n"
+                            f"✂️ Услуга: {appointment['service']}\n"
+                            f"💈 Мастер: {appointment['barber']}\n"
+                            f"📅 Дата: {appointment['date']}\n"
+                            f"🕒 Время: {appointment['time']}\n\n"
+                            "Ждём вас!"
+                        )
+                    )
+
+        except Exception as e:
+            print("Ошибка напоминания за 2 часа:", e)
+
 
 app = ApplicationBuilder().token(TOKEN).build()
 
@@ -975,6 +1009,12 @@ app.job_queue.run_repeating(
     send_tomorrow_reminders,
     interval=86400,
     first=10
+)
+
+app.job_queue.run_repeating(
+    send_two_hour_reminders,
+    interval=600,
+    first=20
 )
 
 app.add_handler(CommandHandler("today", today_command))

@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import datetime
 
 
 def connect():
@@ -124,6 +125,24 @@ def get_appointments():
         })
 
     return appointments
+
+def get_today_appointments():
+    conn = connect()
+    cursor = conn.cursor()
+
+    today = datetime.now().strftime("%d.%m.%Y")
+
+    cursor.execute("""
+    SELECT *
+    FROM appointments
+    WHERE appointment_date = ?
+    """, (today,))
+
+    rows = cursor.fetchall()
+
+    conn.close()
+
+    return rows
 
 
 def is_slot_busy(appointment_date, appointment_time, barber):
