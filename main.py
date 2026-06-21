@@ -41,7 +41,7 @@ client_keyboard = ReplyKeyboardMarkup(
     [
         ["📝 Записаться"],
         ["📆 Расписание"],
-        ["🕒 Свободное время"]
+        ["🕒 Свободное время"],
         ["💰 Цены"],
         ["📍 Контакты"]
     ],
@@ -55,7 +55,7 @@ admin_keyboard = ReplyKeyboardMarkup(
         ["📆 Расписание"],
         ["📋 Заявки"],
         ["👥 Мастера"],
-        ["🕒 Свободное время"]
+        ["🕒 Свободное время"],
         ["💰 Цены"],
         ["📍 Контакты"]
     ],
@@ -503,6 +503,32 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if message_lower in ["свободное время", "свободные слоты", "🕒 свободное время"]:
         await update.message.reply_text(
             get_free_slots_text(today_date()),
+            reply_markup=get_keyboard(update)
+        )
+        return
+    
+        if message_lower in ["💰 цены", "цены", "прайс"]:
+         text = "💰 Цены\n\n"
+
+        for service, price in PRICES.items():
+            text += f"{service} — {price}\n"
+
+        await update.message.reply_text(
+            text,
+            reply_markup=get_keyboard(update)
+        )
+        return
+
+    if message_lower in ["📍 контакты", "контакты", "адрес"]:
+        text = (
+            f"📍 {BUSINESS_NAME}\n\n"
+            f"Адрес: {BUSINESS_ADDRESS}\n"
+            f"Телефон: {BUSINESS_PHONE}\n\n"
+            "🕒 Время работы: 10:00 - 15:00"
+        )
+
+        await update.message.reply_text(
+            text,
             reply_markup=get_keyboard(update)
         )
         return
