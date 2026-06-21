@@ -577,14 +577,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     if message_lower in ["⚡ ближайшее время", "ближайшее время"]:
-     appointments = get_appointments()
+        appointments = get_appointments()
 
-    text = "⚡ Ближайшие свободные слоты\n\n"
+        text = "⚡ Ближайшие свободные слоты\n\n"
 
-    for barber in BARBERS:
-        text += f"{barber}\n"
+        for barber in BARBERS:
+            text += f"{barber}\n"
 
-        found_slots = 0
+            found_slots = 0
 
         for i in range(7):
             date = (datetime.now() + timedelta(days=i)).strftime("%d.%m.%Y")
