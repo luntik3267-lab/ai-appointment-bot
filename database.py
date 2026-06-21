@@ -21,6 +21,13 @@ def init_db():
     )
     """)
 
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS blacklist (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       phone TEXT UNIQUE
+    )
+    """)
+
     try:
      cursor.execute("""
     ALTER TABLE appointments
@@ -261,6 +268,57 @@ def get_client_history(phone):
     WHERE phone = ?
     ORDER BY id DESC
     """, (phone,))
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    return rows
+def add_to_blacklist(phone):
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "INSERT OR IGNORE INTO blacklist (phone) VALUES (?)",
+        (phone,)
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def remove_from_blacklist(phone):
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "DELETE FROM blacklist WHERE phone = ?",
+        (phone,)
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def is_blacklisted(phone):
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT id FROM blacklist WHERE phone = ?",
+        (phone,)
+    )
+
+    result = cursor.fetchone()
+    conn.close()
+
+    return result is not None
+
+
+def get_blacklist():
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT phone FROM blacklist ORDER BY id DESC")
 
     rows = cursor.fetchall()
     conn.close()

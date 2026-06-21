@@ -24,7 +24,11 @@ from database import (
     get_finance_stats,
     get_all_clients,
     clear_appointments,
-    get_client_history
+    get_client_history,
+    add_to_blacklist,
+    remove_from_blacklist,
+    is_blacklisted,
+    get_blacklist
 )
 
 from ai import ask_ai
@@ -422,6 +426,50 @@ async def history_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(text[:4000])
 
+async def ban_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update):
+        return
+
+    if len(context.args) != 1:
+        await update.message.reply_text("Использование: /ban НОМЕР")
+        return
+
+    phone = context.args[0]
+    add_to_blacklist(phone)
+
+    await update.message.reply_text(f"🚫 Номер {phone} добавлен в чёрный список.")
+
+
+async def unban_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update):
+        return
+
+    if len(context.args) != 1:
+        await update.message.reply_text("Использование: /unban НОМЕР")
+        return
+
+    phone = context.args[0]
+    remove_from_blacklist(phone)
+
+    await update.message.reply_text(f"✅ Номер {phone} удалён из чёрного списка.")
+
+
+async def blacklist_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update):
+        return
+
+    blacklist = get_blacklist()
+
+    if not blacklist:
+        await update.message.reply_text("Чёрный список пуст.")
+        return
+
+    text = "🚫 Чёрный список:\n\n"
+
+    for row in blacklist:
+        text += f"📞 {row[0]}\n"
+
+    await update.message.reply_text(text)
 
 async def handle_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -721,6 +769,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if state["step"] == "phone":
             state["phone"] = user_message
+            if is_blacklisted(state["phone"]):
+                del user_states[user_id]
+
+                await update.message.reply_text(
+                    "❌ К сожалению, запись с этим номером невозможна.",
+                    reply_markup=get_keyboard(update)
+                )
+                return
 
             appointment_id = add_appointment(
                 state["name"],
@@ -928,6 +984,9 @@ app.add_handler(CommandHandler("find", find_command))
 app.add_handler(CommandHandler("stats", stats_command))
 app.add_handler(CommandHandler("finance", finance_command))
 app.add_handler(CommandHandler("history", history_command))
+app.add_handler(CommandHandler("ban", ban_command))
+app.add_handler(CommandHandler("unban", unban_command))
+app.add_handler(CommandHandler("blacklist", blacklist_command))
 app.add_handler(CommandHandler("clients", clients_command))
 app.add_handler(CommandHandler("export", export_command))
 app.add_handler(CommandHandler("backup", backup_command))
