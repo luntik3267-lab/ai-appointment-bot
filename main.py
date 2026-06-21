@@ -508,14 +508,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
         if message_lower in ["💰 цены", "цены", "прайс"]:
-         text = "💰 Цены\n\n"
+            text = "💰 Цены\n\n"
 
-        for service, price in PRICES.items():
-            text += f"{service} — {price}\n"
+            for service, price in PRICES.items():
+               text += f"{service} — {price}\n"
 
-        await update.message.reply_text(
-            text,
-            reply_markup=get_keyboard(update)
+            await update.message.reply_text(
+               text,
+               reply_markup=get_keyboard(update)
         )
         return
 
@@ -536,18 +536,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if message_lower in ["📅 сегодняшние записи", "сегодняшние записи"]:
         await today_command(update, context)
         return
-    
-        if message_lower in ["💰 цены", "цены", "прайс"]:
-         text = "💰 Цены\n\n"
 
-        for service, price in PRICES.items():
-            text += f"{service} — {price}\n"
-
-        await update.message.reply_text(
-            text,
-            reply_markup=get_keyboard(update)
-        )
-        return
 
     if message_lower in ["📍 контакты", "контакты", "адрес"]:
         text = (
@@ -598,17 +587,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(text[:4000], reply_markup=get_keyboard(update))
         return
     
-    if message_lower in ["💰 цены", "цены", "прайс"]:
-     text = "💰 Цены\n\n"
-
-    for service, price in PRICES.items():
-        text += f"{service} — {price}\n"
-
-    await update.message.reply_text(
-        text,
-        reply_markup=get_keyboard(update)
-    )
-    return
 
     if message_lower in ["📍 контакты", "контакты", "адрес"]:
      text = (
