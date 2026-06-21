@@ -42,6 +42,8 @@ client_keyboard = ReplyKeyboardMarkup(
         ["📝 Записаться"],
         ["📆 Расписание"],
         ["🕒 Свободное время"]
+        ["💰 Цены"],
+        ["📍 Контакты"]
     ],
     resize_keyboard=True
 )
@@ -54,6 +56,8 @@ admin_keyboard = ReplyKeyboardMarkup(
         ["📋 Заявки"],
         ["👥 Мастера"],
         ["🕒 Свободное время"]
+        ["💰 Цены"],
+        ["📍 Контакты"]
     ],
     resize_keyboard=True
 )
@@ -84,6 +88,14 @@ time_keyboard = ReplyKeyboardMarkup(
 
 BARBERS = ["💈 Али", "💈 Рашад", "💈 Эльвин"]
 ALL_SLOTS = ["10:00", "11:00", "12:00", "13:00", "14:00", "15:00"]
+BUSINESS_NAME = "Barber House"
+BUSINESS_ADDRESS = "Баку, адрес будет тут"
+BUSINESS_PHONE = "+994 XX XXX XX XX"
+PRICES = {
+    "✂️ Стрижка": "15 AZN",
+    "🧔 Борода": "10 AZN",
+    "💈 Комплекс": "20 AZN"
+}
 
 
 def is_admin(update):
@@ -533,6 +545,32 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await update.message.reply_text(text[:4000], reply_markup=get_keyboard(update))
         return
+    
+    if message_lower in ["💰 цены", "цены", "прайс"]:
+     text = "💰 Цены\n\n"
+
+    for service, price in PRICES.items():
+        text += f"{service} — {price}\n"
+
+    await update.message.reply_text(
+        text,
+        reply_markup=get_keyboard(update)
+    )
+    return
+
+    if message_lower in ["📍 контакты", "контакты", "адрес"]:
+     text = (
+        f"📍 {BUSINESS_NAME}\n\n"
+        f"Адрес: {BUSINESS_ADDRESS}\n"
+        f"Телефон: {BUSINESS_PHONE}\n\n"
+        "🕒 Время работы: 10:00 - 15:00"
+    )
+
+    await update.message.reply_text(
+        text,
+        reply_markup=get_keyboard(update)
+    )
+    return
 
     if user_id in user_states:
         state = user_states[user_id]
