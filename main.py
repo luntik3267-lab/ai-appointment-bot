@@ -44,6 +44,7 @@ client_keyboard = ReplyKeyboardMarkup(
         ["🕒 Свободное время"],
         ["💰 Цены"],
         ["📍 Контакты"]
+        ["⚡ Ближайшее время"],
     ],
     resize_keyboard=True
 )
@@ -574,6 +575,52 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=get_keyboard(update)
         )
         return
+    
+    if message_lower in ["⚡ ближайшее время", "ближайшее время"]:
+     appointments = get_appointments()
+
+    text = "⚡ Ближайшие свободные слоты\n\n"
+
+    for barber in BARBERS:
+        text += f"{barber}\n"
+
+        found_slots = 0
+
+        for i in range(7):
+            date = (datetime.now() + timedelta(days=i)).strftime("%d.%m.%Y")
+
+            for slot in ALL_SLOTS:
+                busy = False
+
+                for appointment in appointments:
+                    if (
+                        appointment["date"] == date
+                        and appointment["time"] == slot
+                        and appointment["barber"] == barber
+                    ):
+                        busy = True
+                        break
+
+                if not busy:
+                    text += f"📅 {date} — 🕒 {slot}\n"
+                    found_slots += 1
+
+                if found_slots >= 3:
+                    break
+
+            if found_slots >= 3:
+                break
+
+        if found_slots == 0:
+            text += "❌ Свободного времени нет\n"
+
+        text += "\n"
+
+    await update.message.reply_text(
+        text,
+        reply_markup=get_keyboard(update)
+    )
+    return
 
     if user_id in user_states:
         state = user_states[user_id]
